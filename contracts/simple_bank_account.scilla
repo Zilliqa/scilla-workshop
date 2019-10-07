@@ -1,0 +1,53 @@
+(******************************************************************************)
+(*               Scilla version - to ensure fixed behaviour.                  *)
+(******************************************************************************)
+scilla_version 0
+
+(******************************************************************************)
+(*              Library code - pure, i.e., no state changes                   *)
+(******************************************************************************)
+library SimpleBankAccount
+
+(* Utility function - wrap a single message into a singleton list *)
+let one_msg = 
+  fun (msg : Message) => 
+    let nil_msg = Nil {Message} in
+    Cons {Message} msg nil_msg
+
+
+(******************************************************************************)
+(*                        Contract definition                                 *)
+(******************************************************************************)
+contract SimpleBankAccount()
+
+(******************************************************************************)
+(*                          Contract state                                    *)
+(******************************************************************************)
+
+(* field _balance : Uint128    implicitly declared *)
+
+
+(******************************************************************************)
+(*        Transitions - impure, i.e., state changes and input/output          *)
+(******************************************************************************)
+
+(* Deposit: Deposit money into the account *)
+transition Deposit()
+  (* Incoming message contains _amount field. *)
+  (* Accept incoming amount *)
+  accept
+  (* _balance has now increased accordingly *)
+end
+
+(* Withdraw: Withdraw money from the account *)
+(* amount : amount to withdraw *)
+transition Withdraw(amount : Uint128)
+  (* Incoming message contains _sender field. *)
+  (* Create outgoing message carrying the desired amount *)
+  msg = { _recipient : _sender; _amount : amount; _tag : ""};
+  (* Wrap message in singleton list before sending *)
+  msgs = one_msg msg;
+  (* Send message, thus transferring money *)
+  send msgs
+end
+
