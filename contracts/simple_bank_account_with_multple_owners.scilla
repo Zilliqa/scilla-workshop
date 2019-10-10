@@ -1,0 +1,122 @@
+(******************************************************************************)
+(*               Scilla version - to ensure fixed behaviour.                  *)
+(******************************************************************************)
+scilla_version 0
+
+(******************************************************************************)
+(*               Import functions from the standard library.                  *)
+(******************************************************************************)
+import BoolUtils
+
+(******************************************************************************)
+(*              Library code - pure, i.e., no state changes                   *)
+(******************************************************************************)
+library SimpleBankAccount
+
+(* Utility function - wrap a single message into a singleton list *)
+let one_msg = 
+  fun (msg : Message) => 
+    let nil_msg = Nil {Message} in
+    Cons {Message} msg nil_msg
+
+(* Access logic for Withdraw. *)
+let withdrawal_allowed =
+  fun (sender : ByStr20) =>
+  fun (initial_owner : ByStr20) =>
+  fun (additional_owner_opt : Option Bool) =>
+    let sender_is_initial_owner = builtin eq sender initial_owner
+    in
+    let sender_is_additional_owner =
+      match additional_owner_opt with
+      | None =>
+        let f = False in
+        f
+      | Some x =>
+        x
+      end
+    in
+    orb sender_is_initial_owner sender_is_additional_owner
+
+(******************************************************************************)
+(*                        Contract definition                                 *)
+(******************************************************************************)
+(* initial_owner is the address of the first bank account holder. *)
+(* Only owners is allowed to withdraw. *)
+(* Only the initial owner is allowed to add new owners. *)
+contract SimpleBankAccount(initial_owner : ByStr20)
+
+(******************************************************************************)
+(*                          Contract state                                    *)
+(******************************************************************************)
+
+(* field _balance : Uint128    implicitly declared *)
+
+(* The set of owners added in addition to the initial one. *)
+(* Treating a map from addresses to booleans as equivalent to a set of addresses. *)
+(* additional_owners is a field, so it is mutable. *)
+field additional_owners : Map ByStr20 Bool
+(* Initialise to an empty map *)
+  = Emp ByStr20 Bool
+
+(******************************************************************************)
+(*        Transitions - impure, i.e., state changes and input/output          *)
+(******************************************************************************)
+
+(* Add a new owner. Only the initial owner is allowed to add new owners. *)
+transition AddOwner(new_owner : ByStr20)
+  sender_is_initial_owner = builtin eq _sender initial_owner;
+  match sender_is_initial_owner with
+  | False =>
+    (* Non-owner attempts to add new owner. Deny. *)
+    e = { _eventname : "Error"; error_code : Uint32 3};
+    event e
+  | True =>
+    (* Need to name the value before using it. *)
+    t = True;
+    (* Update additional_owners.*)
+    additional_owners[new_owner] := t
+  end
+end
+
+(* Deposit: Deposit money into the account *)
+transition Deposit()
+  (* Incoming message contains _amount field. *)
+  (* Accept incoming amount *)
+  accept
+  (* _balance has now increased accordingly *)
+end
+
+(* Withdraw: Withdraw money from the account if the balance is sufficient. *)
+(* If not, issue an error event. *)
+(* Only the owner is allowed to withdraw funds from the account. *)
+(* amount : amount to withdraw *)
+transition Withdraw(amount : Uint128)
+  (* Incoming message contains _sender field. *)
+  is_additional_owner_opt <- additional_owners[_sender];
+  allowed = withdrawal_allowed _sender initial_owner is_additional_owner_opt;
+  match allowed with
+  | False =>
+    (* Non-owner attempts withdrawal. Deny. *)
+    e = { _eventname : "Error"; error_code : Uint32 2};
+    event e
+  | True =>
+    (* _sender is owner. Check the balance. *)
+    bal <- _balance;
+    insufficient_balance = builtin lt bal amount;
+    match insufficient_balance with
+    | True =>
+      (* Not enough money *)
+      e = { _eventname : "Error"; error_code : Uint32 1};
+      event e
+    | False =>
+      (* Enough money *)
+      (* Create outgoing message carrying the desired amount *)
+      msg = { _recipient : _sender; _amount : amount; _tag : ""};
+      (* Wrap message in singleton list before sending *)
+      msgs = one_msg msg;
+      (* Send message, thus transferring money *)
+      send msgs
+    end
+  end
+end
+
