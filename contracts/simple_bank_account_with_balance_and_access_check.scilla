@@ -28,7 +28,6 @@ contract SimpleBankAccount(owner : ByStr20)
 
 (* field _balance : Uint128    implicitly declared *)
 
-
 (******************************************************************************)
 (*        Transitions - impure, i.e., state changes and input/output          *)
 (******************************************************************************)
@@ -41,7 +40,9 @@ transition Deposit()
   (* _balance has now increased accordingly *)
 end
 
-(* Withdraw: Withdraw money from the account if the balance is sufficient *)
+(* Withdraw: Withdraw money from the account if the balance is sufficient. *)
+(* If not, issue an error event. *)
+(* Only the owner is allowed to withdraw funds from the account. *)
 (* amount : amount to withdraw *)
 transition Withdraw(amount : Uint128)
   (* Incoming message contains _sender field. *)

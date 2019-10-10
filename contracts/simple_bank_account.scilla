@@ -26,7 +26,6 @@ contract SimpleBankAccount()
 
 (* field _balance : Uint128    implicitly declared *)
 
-
 (******************************************************************************)
 (*        Transitions - impure, i.e., state changes and input/output          *)
 (******************************************************************************)
