@@ -25,6 +25,7 @@ type Error =
 | InsufficientBalance
 | NonOwnerCannotWithdraw
 | CannotAddOwner
+| NonOwnerCannotApprove
 
 (* Using the Error type ensures that mk_error_event can only *)
 (* create events with meaningful error codes. *)
@@ -35,6 +36,7 @@ let mk_error_event =
       | InsufficientBalance => Uint32 1
       | NonOwnerCannotWithdraw => Uint32 2
       | CannotAddOwner => Uint32 3
+      | NonOwnerCannotApprove => Uint32 4
       end
     in
     { _eventname : "Error"; error_code : error_code}
@@ -44,8 +46,8 @@ let mk_error_event =
 let const_true = True
 let const_false = False
 
-(* Access logic for Withdraw. *)
-let withdrawal_allowed =
+(* Check that sender is either the initial owner or an additionl owner. *)
+let sender_is_owner =
   fun (sender : ByStr20) =>
   fun (initial_owner : ByStr20) =>
   fun (additional_owner_opt : Option Bool) =>
@@ -60,6 +62,11 @@ let withdrawal_allowed =
       end
     in
     orb sender_is_initial_owner sender_is_additional_owner
+
+(* Type of pending withdrawals. *)
+type PendingWithdrawal =
+(* A withdrawal consists of a recipient and an amount. *)
+| Withdrawal of ByStr20 Uint128
 
 (******************************************************************************)
 (*                        Contract definition                                 *)
@@ -81,6 +88,13 @@ contract SimpleBankAccount(initial_owner : ByStr20)
 field additional_owners : Map ByStr20 Bool
 (* Initialise to an empty map *)
   = Emp ByStr20 Bool
+
+(* Keep track of the number of withdrawals created. *)
+field withdrawal_count : Uint32 = Uint32 0
+
+(* Map from withdrawalId to information about the withdrawal. *)
+field pending_withdrawals : Map Uint32 PendingWithdrawal
+  = Emp Uint32 PendingWithdrawal
 
 (******************************************************************************)
 (*        Transitions - impure, i.e., state changes and input/output          *)
@@ -109,40 +123,66 @@ transition Deposit()
   (* _balance has now increased accordingly *)
 end
 
-(* Withdraw: Withdraw money from the account if the balance is sufficient. *)
-(* If not, issue an error event. *)
-(* Only the owner is allowed to withdraw funds from the account. *)
-(* amount : amount to withdraw *)
-transition Withdraw(amount : Uint128)
-  (* Incoming message contains _sender field. *)
-  (* Call helper function to check that the sender is allowed to withdraw. *)
-  is_additional_owner_opt <- additional_owners[_sender];
-  allowed = withdrawal_allowed _sender initial_owner is_additional_owner_opt;
-  match allowed with
-  | False =>
-    (* Non-owner attempts withdrawal. Deny. *)
-    error = NonOwnerCannotWithdraw;
-    e = mk_error_event error;
-    event e
-  | True =>
-    (* _sender is owner. Check the balance. *)
-    bal <- _balance;
-    insufficient_balance = builtin lt bal amount;
-    match insufficient_balance with
-    | True =>
-      (* Not enough money *)
-      error = InsufficientBalance;
-      e = mk_error_event error;
-      event e
-    | False =>
-      (* Enough money *)
-      (* Create outgoing message carrying the desired amount *)
-      msg = { _recipient : _sender; _amount : amount; _tag : ""};
-      (* Wrap message in singleton list before sending *)
-      msgs = one_msg msg;
-      (* Send message, thus transferring money *)
-      send msgs
-    end
-  end
+(* Increment withdrawal_count. *)
+(* Defined as a procedure - not available to be called by a user. *)
+procedure IncrementWithdrawalCount()
+  count <- withdrawal_count;
+  one = Uint32 1;
+  new_count = builtin add count one;
+  withdrawal_count := new_count
 end
 
+(* Ask for money to be paid out. *)
+transition SubmitWithdrawal(recipient : ByStr20, amount : Uint128)
+  (* Create pending withdrawal *)
+  withdrawal = Withdrawal recipient amount;
+  (* Assign withdrawalId = number of previous withdrawals. *)
+  withdrawal_id <- withdrawal_count;
+  (* Increment the number of withdrawals *)
+  IncrementWithdrawalCount;
+  (* Add new withdrawal to pending_withdrawals. *)
+  pending_withdrawals[withdrawal_id] := withdrawal;
+  (* Add empty set of approvals. *)
+  empty_approvals = Emp ByStr20 Bool
+end
+
+(* Approve a pending withdrawal. *)
+transition ApproveWithdrawal(withdrawalId : Uint32)
+
+  (* Exercise 1: *)
+  (* Only owners can approve withdrawals. *)
+  (* Keep track of which owners have approved each withdrawal. *)
+  
+end
+
+(* Withdraw: Execute a pending withdrawal provided it has been approved *)
+(* by all owners, and provided the balance is sufficient. *)
+(* If not, issue an appropriate error event. *)
+transition Withdraw(withdrawalId : Uint32)
+
+  (* Exercise 2: *)
+  (* Execute the withdrawal if all owners have approved. *)
+
+end
+
+  (* Additional exercises *)
+
+  (* Exercise 3: *)
+  (* What happens if some malicious user keeps submitting new withdrawals that will never be approved? *)
+  (* Can this be avoided? *)
+
+  (* Exercise 4 (challenging): *)
+  (* What happens if a new owner is added while there are pending approvals? *)
+  (* Can this be remedied? *)
+
+  (* Exercise 5: *)
+  (* Execute the withdrawal if a certain, predefined number of owners have approved. *)
+  (* How should this predefined number be supplied? *)
+
+  (* Exercise 6: *)
+  (* What happens if an owner turns out to be malicious - can he be removed? *)
+  (* Who should be allowed to remove him? *)
+
+  (* Exercise 7 (challenging): *)
+  (* What happens if the initial owner turns out to be malicious? *)
+  (* Can we construct a bank account with multiple owners but without a superuser? *)
