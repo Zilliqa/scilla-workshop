@@ -19,6 +19,23 @@ let one_msg =
     let nil_msg = Nil {Message} in
     Cons {Message} msg nil_msg
 
+(* Error types *)
+type Error =
+| InsufficientBalance
+| NonOwnerCannotWithdraw
+
+(* Using the Error type ensures that mk_error_event can only *)
+(* create events with meaningful error codes. *)
+let mk_error_event =
+  fun (error : Error) =>
+    let error_code =
+      match error with
+      | InsufficientBalance => Uint32 1
+      | NonOwnerCannotWithdraw => Uint32 2
+      end
+    in
+    { _eventname : "Error"; error_code : error_code}
+
 (* Access logic for Withdraw. *)
 let withdrawal_allowed =
   fun (sender : ByStr20) =>
@@ -92,12 +109,14 @@ end
 (* amount : amount to withdraw *)
 transition Withdraw(amount : Uint128)
   (* Incoming message contains _sender field. *)
+  (* Call helper function to check that the sender is allowed to withdraw. *)
   is_additional_owner_opt <- additional_owners[_sender];
   allowed = withdrawal_allowed _sender initial_owner is_additional_owner_opt;
   match allowed with
   | False =>
     (* Non-owner attempts withdrawal. Deny. *)
-    e = { _eventname : "Error"; error_code : Uint32 2};
+    error = NonOwnerCannotWithdraw;
+    e = mk_error_event error;
     event e
   | True =>
     (* _sender is owner. Check the balance. *)
@@ -106,7 +125,8 @@ transition Withdraw(amount : Uint128)
     match insufficient_balance with
     | True =>
       (* Not enough money *)
-      e = { _eventname : "Error"; error_code : Uint32 1};
+      error = InsufficientBalance;
+      e = mk_error_event error;
       event e
     | False =>
       (* Enough money *)
