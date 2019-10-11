@@ -42,6 +42,11 @@ end
 (* amount : amount to withdraw *)
 transition Withdraw(amount : Uint128)
   (* Incoming message contains _sender field. *)
+
+  (* Exercise: *)
+  (* Ensure that there is enough money in the account before withdrawing funds. *)
+  (* If the _balance is insufficient, issue an event signalling an error. *)
+
   (* Create outgoing message carrying the desired amount *)
   msg = { _recipient : _sender; _amount : amount; _tag : ""};
   (* Wrap message in singleton list before sending *)

@@ -14,6 +14,14 @@ let one_msg =
     let nil_msg = Nil {Message} in
     Cons {Message} msg nil_msg
 
+(* Create an Error event. *)
+(* error codes: *)
+(* 1 : Insufficient balance *)
+let mk_error_event =
+  fun (error_code : Uint32) =>
+    { _eventname : "Error"; error_code : error_code}
+
+
 (******************************************************************************)
 (*                        Contract definition                                 *)
 (******************************************************************************)
@@ -41,6 +49,12 @@ end
 (* If not, issue an error event. *)
 (* amount : amount to withdraw *)
 transition Withdraw(amount : Uint128)
+  (* Incoming message contains _sender field. *)
+
+  (* Exercise: *)
+  (* Ensure that only the owner of the account can withdraw funds. *)
+  (* Hint: The owner should be a contract parameter. *)
+
   (* Fetch the current balance *)
   bal <- _balance;
   (* Check that the balance is sufficient *)
@@ -48,7 +62,8 @@ transition Withdraw(amount : Uint128)
   match insufficient_balance with
   | True =>
     (* Not enough money *)
-    e = { _eventname : "Error"; error_code : Uint32 1};
+    error_code = Uint32 1;
+    e = mk_error_event error_code;
     event e
   | False =>
     (* Enough money *)
