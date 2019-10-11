@@ -182,7 +182,3 @@ end
   (* Exercise 6: *)
   (* What happens if an owner turns out to be malicious - can he be removed? *)
   (* Who should be allowed to remove him? *)
-
-  (* Exercise 7 (challenging): *)
-  (* What happens if the initial owner turns out to be malicious? *)
-  (* Can we construct a bank account with multiple owners but without a superuser? *)
