@@ -20,6 +20,10 @@ let one_msg =
     let nil_msg = Nil {Message} in
     Cons {Message} msg nil_msg
 
+let mk_withdrawal_request_submitted_event =
+  fun (withdrawalId : Uint32) =>
+    { _eventname : "WithdrawalRequestSubmitted"; withdrawalId : withdrawalId }
+
 (* Error types *)
 type Error =
 | InsufficientBalance
@@ -142,8 +146,9 @@ transition SubmitWithdrawal(recipient : ByStr20, amount : Uint128)
   IncrementWithdrawalCount;
   (* Add new withdrawal to pending_withdrawals. *)
   pending_withdrawals[withdrawal_id] := withdrawal;
-  (* Add empty set of approvals. *)
-  empty_approvals = Emp ByStr20 Bool
+  (* Issue event with the withdrawalId *)
+  e = mk_withdrawal_request_submitted_event withdrawal_id;
+  event e
 end
 
 (* Approve a pending withdrawal. *)
@@ -176,9 +181,10 @@ end
   (* Can this be remedied? *)
 
   (* Exercise 5: *)
-  (* Execute the withdrawal if a certain, predefined number of owners have approved. *)
-  (* How should this predefined number be supplied? *)
-
-  (* Exercise 6: *)
   (* What happens if an owner turns out to be malicious - can he be removed? *)
   (* Who should be allowed to remove him? *)
+
+  (* Exercise 6: *)
+  (* Execute the withdrawal if a certain, predefined number of owners have approved. *)
+  (* How should this predefined number be supplied? *)
+  (* What happens if the number of owners changes? *)

@@ -1,0 +1,272 @@
+(******************************************************************************)
+(*               Scilla version - to ensure fixed behaviour.                  *)
+(******************************************************************************)
+scilla_version 0
+
+(******************************************************************************)
+(*               Import functions from the standard library.                  *)
+(******************************************************************************)
+(* BoolUtils needed for orb (boolean OR) *)
+(* ListUtils needed for fold and length functions *)
+import BoolUtils ListUtils
+
+(******************************************************************************)
+(*              Library code - pure, i.e., no state changes                   *)
+(******************************************************************************)
+library MultisigWallet
+
+(* Utility function - wrap a single message into a singleton list *)
+let one_msg = 
+  fun (msg : Message) => 
+    let nil_msg = Nil {Message} in
+    Cons {Message} msg nil_msg
+
+let mk_withdrawal_request_submitted_event =
+  fun (withdrawalId : Uint32) =>
+    { _eventname : "WithdrawalRequestSubmitted"; withdrawalId : withdrawalId }
+
+(* Error types *)
+type Error =
+| InsufficientBalance
+| NonOwnerCannotWithdraw
+| CannotAddOwner
+| NonOwnerCannotApprove
+| IllegalWithdrawalId
+| WithdrawalNotApproved
+
+(* Using the Error type ensures that mk_error_event can only *)
+(* create events with meaningful error codes. *)
+let mk_error_event =
+  fun (error : Error) =>
+    let error_code =
+      match error with
+      | InsufficientBalance => Uint32 1
+      | NonOwnerCannotWithdraw => Uint32 2
+      | CannotAddOwner => Uint32 3
+      | NonOwnerCannotApprove => Uint32 4
+      | IllegalWithdrawalId => Uint32 5
+      | WithdrawalNotApproved => Uint32 6
+      end
+    in
+    { _eventname : "Error"; error_code : error_code}
+
+(* All values must be named. *)
+(* It is therefore helpful to define the constants needed in the contract. *)
+let const_true = True
+let const_false = False
+let const_zero = Uint32 0
+
+(* Type of pending withdrawals. *)
+type PendingWithdrawal =
+(* A withdrawal consists of a recipient and an amount. *)
+| Withdrawal of ByStr20 Uint128
+
+let sender_is_owner =
+  fun (sender : ByStr20) =>
+  fun (owners : List ByStr20) =>
+
+    (* Exercise 1: *)
+    (* Only owners should be allowed to submit new withdrawal requests. *)
+    const_true
+
+(* Withdrawal has been approved by enough owners *)
+let withdrawal_approved =
+  fun (approvals : Map ByStr20 Bool) =>
+  fun (required_approvals : Uint32) =>
+    let approvals_count = builtin size approvals in
+    builtin lt approvals_count required_approvals
+
+
+(******************************************************************************)
+(*                        Contract definition                                 *)
+(******************************************************************************)
+(* owners is list of owners of this wallet. *)
+(* required_approvals is the number of owners who need to approve a *)
+(* withdrawal before it can be executed. *)
+contract MultisigWallet(owners : List ByStr20, required_approvals : Uint32)
+
+(******************************************************************************)
+(*                          Contract state                                    *)
+(******************************************************************************)
+(* Keep track of the number of withdrawals created. *)
+field withdrawal_count : Uint32 = Uint32 0
+
+(* Map from withdrawalId to information about the withdrawal. *)
+field pending_withdrawals : Map Uint32 PendingWithdrawal
+  = Emp Uint32 PendingWithdrawal
+
+(* The set of approving owners for each withdrawalId. *)
+field approvals : Map Uint32 (Map ByStr20 Bool)
+  = Emp Uint32 (Map ByStr20 Bool)
+
+(******************************************************************************)
+(*        Transitions - impure, i.e., state changes and input/output          *)
+(******************************************************************************)
+(* Deposit: Deposit money into the account *)
+transition Deposit()
+  accept
+end
+
+(* Increment withdrawal_count. *)
+(* Defined as a procedure - not available to be called by a user. *)
+procedure IncrementWithdrawalCount()
+  count <- withdrawal_count;
+  one = Uint32 1;
+  new_count = builtin add count one;
+  withdrawal_count := new_count
+end
+
+(* Ask for money to be paid out. *)
+transition SubmitWithdrawal(recipient : ByStr20, amount : Uint128)
+  (* Only owners are allowed to submit new withdrawals *)
+  allowed = sender_is_owner _sender owners;
+  match allowed with
+  | False =>
+    error = NonOwnerCannotWithdraw;
+    e = mk_error_event error;
+    event e
+  | True =>
+    (* Create pending withdrawal *)
+    withdrawal = Withdrawal recipient amount;
+    (* Assign withdrawalId = number of previous withdrawals. *)
+    withdrawal_id <- withdrawal_count;
+    (* Increment the number of withdrawals *)
+    IncrementWithdrawalCount;
+    (* Add new withdrawal to pending_withdrawals. *)
+    pending_withdrawals[withdrawal_id] := withdrawal;
+    (* Add empty set of approvals. *)
+    empty_approvals = Emp ByStr20 Bool;
+    approvals[withdrawal_id] := empty_approvals;
+    (* Issue event with the withdrawalId *)
+    e = mk_withdrawal_request_submitted_event withdrawal_id;
+    event e
+  end
+end
+
+(* Approve a pending withdrawal. *)
+transition ApproveWithdrawal(withdrawalId : Uint32)
+  (* Only owners are allowed to approve withdrawals *)
+  allowed = sender_is_owner _sender owners;
+  match allowed with
+  | False => 
+    error = NonOwnerCannotApprove;
+    e = mk_error_event error;
+    event e
+  | True =>
+    withdrawal_exists <- exists approvals[withdrawalId];
+    match withdrawal_exists with
+    | False =>
+      error = IllegalWithdrawalId;
+      e = mk_error_event error;
+      event e
+    | True =>
+      approvals[withdrawalId][_sender] := const_true
+    end
+  end
+end
+
+(* Withdraw: Execute a pending withdrawal provided it has been approved *)
+(* by enough owners, and provided the balance is sufficient. *)
+(* If not, issue an appropriate error event. *)
+transition Withdraw(withdrawalId : Uint32)
+  (* Only owners are allowed to approve withdrawals *)
+  allowed = sender_is_owner _sender owners;
+  match allowed with
+  | False => 
+    error = NonOwnerCannotWithdraw;
+    e = mk_error_event error;
+    event e
+  | True =>
+    approvals_for_withdrawal_opt <- approvals[withdrawalId];
+    match approvals_for_withdrawal_opt with
+    | None =>
+      (* WithdrawalId does not exist *)
+      error = IllegalWithdrawalId;
+      e = mk_error_event error;
+      event e
+    | Some approvals_for_withdrawal =>
+      approved = withdrawal_approved approvals_for_withdrawal required_approvals;
+      match approved with
+      | False =>
+        error = WithdrawalNotApproved;
+        e = mk_error_event error;
+        event e
+      | True =>
+        withdrawal <- pending_withdrawals[withdrawalId];
+        match withdrawal with
+        | None =>
+          (* WithdrawalId does not exist *)
+          error = IllegalWithdrawalId;
+          e = mk_error_event error;
+          event e
+        | Some (Withdrawal recipient amount) =>
+          (* Check the balance *)
+          bal <- _balance;
+          balance_sufficient = builtin lt bal amount;
+          match balance_sufficient with
+          | False =>
+            error = InsufficientBalance;
+            e = mk_error_event error;
+            event e
+          | True =>
+            (* Everything is fine. Remove pending withdrawal and approvals, and execute. *)
+            delete pending_withdrawals[withdrawalId];
+            delete approvals[withdrawalId];
+            msg = { _tag : ""; _recipient : recipient ; _amount : amount };
+            msgs = one_msg msg;
+            send msgs
+          end
+        end
+      end
+    end
+  end
+end
+
+  (* Additional exercises *)
+  
+  (* Exercise 2: *)
+  (* If you have solved Exercise 1 the way we expected, sender_is_owner traverses the *)
+  (* list of owners each time SubmitWithdrawl, ApproveWithdrawal or Withdraw is *)
+  (* invoked. *)
+  (* Representing the set of owners as a Map ByStr20 Bool is clearly more efficient, *)
+  (* since ownership can then be checked in constant time. *)
+  (* However, it is not possible to use a map as a contract parameter, so we have to use a list there. *)
+  (* Write a function converting a List ByStr20 into a Map ByStr20 Bool. *)
+  (* Then add a field to the contract in which you can store the map of owners, and use the *)
+  (* function to initialise the field. *)
+
+  (* Exercise 2.1 (challenging): *)
+  (* What happens if the contract is deployed with ... *)
+  (* - ... a number of owners which is less than required_approvals? *)
+  (* - ... no owners? *)
+  (* - ... required_approvals = 0? *)
+  (* - ... a list of owners which contains duplicates? *)
+  (* Find a way to initialise the map of owners such that funds cannot be *)
+  (* accidentally frozen due to bad contract parameters. *)
+
+  (* Exercise 3: *)
+  (* To use the builtin size operation on a map we need to fetch the entire map *)
+  (* from the contract state database. *)
+  (* Implement a constant-time way to find out how many owners have approved *)
+  (* a withdrawal. *)
+    
+  (* Exercise 4: *)
+  (* When a withdrawal is executed the _tag field of the outgoing message is empty. *)
+  (* This means that the message can only be sent to a user account, and not to another contract. *)
+  (* Change the contract so that money can be withdrawn to another contract. *)
+
+  (* Exercise 5: *)
+  (* Suppose an owner loses his private key, and thus is no longer able to approve withdrawals. *)
+  (* Figure out a way to restore the wallet so that the person can be given *)
+  (* ownership rights again with a new address. *)
+  (* Hint: Use the solution to Exercise 4. *)
+
+  (* Exercise 6 (challenging): *)
+  (* The list of owners is immutable, and thus it is impossible to add or remove owners. *)
+  (* Change the contract to make it possible to add and/or remove owners. *)
+  (* Things to consider: *)
+  (* - Who should approve a new owner, or approve of the removal of an owner? *)
+  (* - What happens to required_approvals when an owner is added or removed? *)
+  (* - What happens to pending withdrawals when an owner is added or removed? *)
+  (* - Is your solution robust enough to handle a malicious owner? How about multiple malicious owners? *)
+
