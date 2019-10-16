@@ -13,8 +13,9 @@ defined in the library section of `list_learning.scilla`. These
 are to be filled up by the participant.
 
 ## Running
-An easy runner script is provided. Edit `easyrun.sh` to set
-the SCILLA_DIR variable at the beginning of the script.
+An easy runner script is provided. `easyrun.sh` expects the
+user to have already set the environment variable SCILLA_DIR
+pointing to a scilla build. For example `export SCILLA_DIR=/path/to/scilla`.
 
 The script can be used as follows:
 

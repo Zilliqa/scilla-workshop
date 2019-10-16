@@ -1,15 +1,12 @@
 #!/bin/bash
 
-# Set path to your scilla directory.
-readonly SCILLA_DIR="/home/vaivaswatha/c/scilla"
-
 readonly scilla_runner="${SCILLA_DIR}/bin/scilla-runner"
 readonly scilla_checker="${SCILLA_DIR}/bin/scilla-checker"
 readonly scilla_libdir="${SCILLA_DIR}/src/stdlib"
 
-if [[ ! -x ${scilla_runner} || ! -x ${scilla_checker} || ! -d ${scilla_libdir} ]]
+if [[ -z ${SCILLA_DIR} || ! -x ${scilla_runner} || ! -x ${scilla_checker} || ! -d ${scilla_libdir} ]]
 then
-    echo "Scilla library / binaries not found"
+    echo "Scilla library / binaries not found. Please set SCILLA_DIR correctly."
     exit 1
 fi
 
