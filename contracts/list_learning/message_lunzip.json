@@ -1,0 +1,28 @@
+{
+    "_tag": "lunzip",
+    "_amount": "0",
+    "_sender" : "0x12345678901234567890123456789012345678ab",
+    "params": [
+        {
+            "vname" : "mypairlist",
+            "type" : "List (Pair String Uint32)",
+            "value" : [
+                {
+                    "constructor": "Pair",
+                    "argtypes": [ "String", "Uint32" ],
+                    "arguments": ["MyStr1", "1"]
+                },
+                {
+                    "constructor": "Pair",
+                    "argtypes": [ "String", "Uint32" ],
+                    "arguments": ["MyStr2", "2"]
+                },
+                {
+                    "constructor": "Pair",
+                    "argtypes": [ "String", "Uint32" ],
+                    "arguments": ["MyStr3", "3"]
+                }
+            ]
+        }
+    ]
+}
