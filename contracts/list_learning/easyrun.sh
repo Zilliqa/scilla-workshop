@@ -39,6 +39,7 @@ status=$?
 if test $status -ne 0
 then
     echo "scilla-checker failed"
+    print_usage_and_exit
 fi
 
 ${scilla_runner} -init init.json -istate state.json -imessage message_${op}.json -o output.json -iblockchain blockchain.json -i list_learning.scilla -gaslimit 8000 -libdir ${scilla_libdir}
