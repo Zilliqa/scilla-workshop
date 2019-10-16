@@ -1,0 +1,50 @@
+scilla_version 0
+
+library MyLearnings
+
+(* Compute the length of a list. *)
+let list_length =
+  fun (ls : List Uint32) =>
+    (* Complete me. *)
+    Uint32 0
+
+(* Compute the sum of elements in a list. *)
+let list_sum =
+  fun (ls : List Uint32) =>
+    (* Complete me. *)
+    Uint32 0
+
+let list_unzip : List (Pair String Uint32) -> Pair (List String) (List Uint32) =
+  fun (ls : List (Pair String Uint32)) =>
+    (* Complete me. *)
+    let nil_string_list = Nil {String} in
+    let nil_uint32_list = Nil {Uint32} in
+    Pair {(List String) (List Uint32)} nil_string_list nil_uint32_list
+
+contract ListLearning
+()
+
+
+transition llength (myintlist : List Uint32)
+
+  len = list_length myintlist;
+  e = { _eventname : "List_Length"; len : len };
+  event e
+
+end
+
+transition lsum (myintlist : List Uint32)
+
+  sum = list_sum myintlist;
+  e = { _eventname : "List_Sum"; sum : sum };
+  event e
+
+end
+
+transition lunzip (mypairlist : List (Pair String Uint32))
+
+  unzipped = list_unzip mypairlist;
+  e = { _eventname: "List_Unzipped"; unzipped : unzipped };
+  event e
+
+end
