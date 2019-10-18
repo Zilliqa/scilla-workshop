@@ -12,7 +12,7 @@ fi
 
 function print_usage_and_exit
 {
-    echo "Usage: $0 [llength|lsum|lunzip]"
+    echo "Usage: $0 [llength|lsum|lunzip|lreverse]"
     exit 1
 }
 
@@ -25,7 +25,7 @@ fi
 
 op=$1
 
-if [[ $op != "llength" && $op != "lsum" && $op != "lunzip" ]]
+if [[ $op != "llength" && $op != "lsum" && $op != "lunzip" && $op != "lreverse" ]]
 then
     print_usage_and_exit
 fi

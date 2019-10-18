@@ -21,6 +21,11 @@ let list_unzip : List (Pair String Uint32) -> Pair (List String) (List Uint32) =
     let nil_uint32_list = Nil {Uint32} in
     Pair {(List String) (List Uint32)} nil_string_list nil_uint32_list
 
+let list_reverse : List (Uint32) -> List (Uint32) =
+  fun (ls : List (Uint32)) =>
+    (* Complete me. *)
+    ls
+
 contract ListLearning
 ()
 
@@ -45,6 +50,13 @@ transition lunzip (mypairlist : List (Pair String Uint32))
 
   unzipped = list_unzip mypairlist;
   e = { _eventname: "List_Unzipped"; unzipped : unzipped };
+  event e
+
+end
+
+transition lreverse (myintlist : List Uint32)
+  reversed = list_reverse myintlist;
+  e = { _eventname: "List_Reversed"; reversed : reversed };
   event e
 
 end
