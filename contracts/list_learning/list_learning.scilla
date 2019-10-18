@@ -14,6 +14,11 @@ let list_sum =
     (* Complete me. *)
     Uint32 0
 
+let list_reverse : List (Uint32) -> List (Uint32) =
+  fun (ls : List (Uint32)) =>
+    (* Complete me. *)
+    ls
+
 let list_unzip : List (Pair String Uint32) -> Pair (List String) (List Uint32) =
   fun (ls : List (Pair String Uint32)) =>
     (* Complete me. *)
@@ -37,6 +42,13 @@ transition lsum (myintlist : List Uint32)
 
   sum = list_sum myintlist;
   e = { _eventname : "List_Sum"; sum : sum };
+  event e
+
+end
+
+transition lreverse (myintlist : List Uint32)
+  reversed = list_reverse myintlist;
+  e = { _eventname: "List_Reversed"; reversed : reversed };
   event e
 
 end
