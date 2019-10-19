@@ -34,6 +34,10 @@ type Error =
 | IllegalWithdrawalId
 | WithdrawalNotApproved
 
+(* Dummy type to model sets with maps *)
+type Unit =
+| Unit
+
 (* Using the Error type ensures that mk_error_event can only *)
 (* create events with meaningful error codes. *)
 let mk_error_event =
@@ -55,6 +59,8 @@ let mk_error_event =
 let const_true = True
 let const_false = False
 let const_zero = Uint32 0
+(* A name for the dummy value to model sets with maps *)
+let const_dummy = Unit
 
 (* Type of pending withdrawals. *)
 type PendingWithdrawal =
@@ -71,7 +77,7 @@ let sender_is_owner =
 
 (* Withdrawal has been approved by enough owners *)
 let withdrawal_approved =
-  fun (approvals : Map ByStr20 Bool) =>
+  fun (approvals : Map ByStr20 Unit) =>
   fun (required_approvals : Uint32) =>
     let approvals_count = builtin size approvals in
     builtin lt approvals_count required_approvals
@@ -96,8 +102,8 @@ field pending_withdrawals : Map Uint32 PendingWithdrawal
   = Emp Uint32 PendingWithdrawal
 
 (* The set of approving owners for each withdrawalId. *)
-field approvals : Map Uint32 (Map ByStr20 Bool)
-  = Emp Uint32 (Map ByStr20 Bool)
+field approvals : Map Uint32 (Map ByStr20 Unit)
+  = Emp Uint32 (Map ByStr20 Unit)
 
 (******************************************************************************)
 (*        Transitions - impure, i.e., state changes and input/output          *)
@@ -135,7 +141,7 @@ transition SubmitWithdrawal(recipient : ByStr20, amount : Uint128)
     (* Add new withdrawal to pending_withdrawals. *)
     pending_withdrawals[withdrawal_id] := withdrawal;
     (* Add empty set of approvals. *)
-    empty_approvals = Emp ByStr20 Bool;
+    empty_approvals = Emp ByStr20 Unit;
     approvals[withdrawal_id] := empty_approvals;
     (* Issue event with the withdrawalId *)
     e = mk_withdrawal_request_submitted_event withdrawal_id;
@@ -160,7 +166,7 @@ transition ApproveWithdrawal(withdrawalId : Uint32)
       e = mk_error_event error;
       event e
     | True =>
-      approvals[withdrawalId][_sender] := const_true
+      approvals[withdrawalId][_sender] := const_dummy
     end
   end
 end
@@ -228,10 +234,10 @@ end
   (* If you have solved Exercise 1 the way we expected, sender_is_owner traverses the *)
   (* list of owners each time SubmitWithdrawl, ApproveWithdrawal or Withdraw is *)
   (* invoked. *)
-  (* Representing the set of owners as a Map ByStr20 Bool is clearly more efficient, *)
+  (* Representing the set of owners as a Map ByStr20 Unit is clearly more efficient, *)
   (* since ownership can then be checked in constant time. *)
   (* However, it is not possible to use a map as a contract parameter, so we have to use a list there. *)
-  (* Write a function converting a List ByStr20 into a Map ByStr20 Bool. *)
+  (* Write a function converting a List ByStr20 into a Map ByStr20 Unit. *)
   (* Then add a field to the contract in which you can store the map of owners, and use the *)
   (* function to initialise the field. *)
 

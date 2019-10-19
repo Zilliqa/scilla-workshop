@@ -31,6 +31,12 @@ type Error =
 | CannotAddOwner
 | NonOwnerCannotApprove
 
+
+(* Dummy type to model sets with maps *)
+type Unit =
+| Unit
+
+
 (* Using the Error type ensures that mk_error_event can only *)
 (* create events with meaningful error codes. *)
 let mk_error_event =
@@ -49,20 +55,22 @@ let mk_error_event =
 (* It is therefore helpful to define the constants needed in the contract. *)
 let const_true = True
 let const_false = False
+(* A name for the dummy value to model sets with maps *)
+let const_dummy = Unit
 
-(* Check that sender is either the initial owner or an additionl owner. *)
+(* Check that sender is either the initial owner or an additional owner. *)
 let sender_is_owner =
   fun (sender : ByStr20) =>
   fun (initial_owner : ByStr20) =>
-  fun (additional_owner_opt : Option Bool) =>
+  fun (additional_owner_opt : Option Unit) =>
     let sender_is_initial_owner = builtin eq sender initial_owner
     in
     let sender_is_additional_owner =
       match additional_owner_opt with
       | None =>
         const_false
-      | Some x =>
-        x
+      | Some _ =>
+        const_true
       end
     in
     orb sender_is_initial_owner sender_is_additional_owner
@@ -72,11 +80,12 @@ type PendingWithdrawal =
 (* A withdrawal consists of a recipient and an amount. *)
 | Withdrawal of ByStr20 Uint128
 
+
 (******************************************************************************)
 (*                        Contract definition                                 *)
 (******************************************************************************)
 (* initial_owner is the address of the first bank account holder. *)
-(* Only owners is allowed to withdraw. *)
+(* Only owners are allowed to withdraw. *)
 (* Only the initial owner is allowed to add new owners. *)
 contract SimpleBankAccount(initial_owner : ByStr20)
 
@@ -87,11 +96,11 @@ contract SimpleBankAccount(initial_owner : ByStr20)
 (* field _balance : Uint128    implicitly declared *)
 
 (* The set of owners added in addition to the initial one. *)
-(* Treating a map from addresses to booleans as equivalent to a set of addresses. *)
+(* Treating a map from addresses to unit as equivalent to a set of addresses. *)
 (* additional_owners is a field, so it is mutable. *)
-field additional_owners : Map ByStr20 Bool
+field additional_owners : Map ByStr20 Unit
 (* Initialise to an empty map *)
-  = Emp ByStr20 Bool
+  = Emp ByStr20 Unit
 
 (* Keep track of the number of withdrawals created. *)
 field withdrawal_count : Uint32 = Uint32 0
@@ -115,7 +124,7 @@ transition AddOwner(new_owner : ByStr20)
     event e
   | True =>
     (* Update additional_owners.*)
-    additional_owners[new_owner] := const_true
+    additional_owners[new_owner] := const_dummy
   end
 end
 
