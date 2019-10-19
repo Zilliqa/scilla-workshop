@@ -136,15 +136,6 @@ transition Deposit()
   (* _balance has now increased accordingly *)
 end
 
-(* Increment withdrawal_count. *)
-(* Defined as a procedure - not available to be called by a user. *)
-procedure IncrementWithdrawalCount()
-  count <- withdrawal_count;
-  one = Uint32 1;
-  new_count = builtin add count one;
-  withdrawal_count := new_count
-end
-
 (* Ask for money to be paid out. *)
 transition SubmitWithdrawal(recipient : ByStr20, amount : Uint128)
   (* Create pending withdrawal *)
@@ -152,7 +143,10 @@ transition SubmitWithdrawal(recipient : ByStr20, amount : Uint128)
   (* Assign withdrawalId = number of previous withdrawals. *)
   withdrawal_id <- withdrawal_count;
   (* Increment the number of withdrawals *)
-  IncrementWithdrawalCount;
+  count <- withdrawal_count;
+  one = Uint32 1;
+  new_count = builtin add count one;
+  withdrawal_count := new_count;
   (* Add new withdrawal to pending_withdrawals. *)
   pending_withdrawals[withdrawal_id] := withdrawal;
   (* Issue event with the withdrawalId *)
