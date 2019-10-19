@@ -202,13 +202,13 @@ transition Withdraw(withdrawalId : Uint32)
         | Some (Withdrawal recipient amount) =>
           (* Check the balance *)
           bal <- _balance;
-          balance_sufficient = builtin lt bal amount;
-          match balance_sufficient with
-          | False =>
+          insufficient_balance = builtin lt bal amount;
+          match insufficient_balance with
+          | True =>
             error = InsufficientBalance;
             e = mk_error_event error;
             event e
-          | True =>
+          | False =>
             (* Everything is fine. Remove pending withdrawal and approvals, and execute. *)
             delete pending_withdrawals[withdrawalId];
             delete approvals[withdrawalId];
