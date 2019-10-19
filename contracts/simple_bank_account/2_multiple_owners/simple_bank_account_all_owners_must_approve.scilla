@@ -109,6 +109,11 @@ field withdrawal_count : Uint32 = Uint32 0
 field pending_withdrawals : Map Uint32 PendingWithdrawal
   = Emp Uint32 PendingWithdrawal
 
+(* The set of approving owners for each withdrawalId. *)
+field approvals : Map Uint32 (Map ByStr20 Unit)
+  = Emp Uint32 (Map ByStr20 Unit)
+
+
 (******************************************************************************)
 (*        Transitions - impure, i.e., state changes and input/output          *)
 (******************************************************************************)
@@ -166,6 +171,7 @@ transition ApproveWithdrawal(withdrawalId : Uint32)
   (* Exercise 1: *)
   (* Only owners can approve withdrawals. *)
   (* Keep track of which owners have approved each withdrawal. *)
+  (* Hint: use the approvals field defined above *)
   
 end
 
