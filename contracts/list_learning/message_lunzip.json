@@ -21,6 +21,11 @@
                     "constructor": "Pair",
                     "argtypes": [ "String", "Uint32" ],
                     "arguments": ["MyStr3", "3"]
+                },
+                {
+                    "constructor": "Pair",
+                    "argtypes": [ "String", "Uint32" ],
+                    "arguments": ["MyStr4", "4"]
                 }
             ]
         }
